@@ -1,61 +1,41 @@
-﻿using Render.Image;
+﻿using Define;
+using Render.Image;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Assertions;
+using Window;
 
 namespace Render.Utility
 {
     public class ImageUtil
     {
-        private const int X = 13340;
-        private const int Y = 750;
-        
-        [MenuItem("Test/test1")]
+        [MenuItem("Render/test1")]
         static void Test()
         {
-            
+            IXImage img = GetSampleImg(750, 750);
+            SaveXImage(img);
         }
 
-        public static IXImage GetSampleImg()
+        public static IXImage GetGameSizeSampleImg()
         {
-            XImage img= GetXImage(PathUtil.SampleTexturePath);
+            return GetSampleImg(RenderDefine.ScreenWidth, RenderDefine.ScreenHeight);
+        }
+        
+        public static IXImage GetSampleImg(int width,int height)
+        {
+            XImage img= GetXImage(width,height,PathUtil.SampleTexturePath);
             img.Clear();
             img.Texture.Apply();
             return img;
         }
-        
-        public static void CopySprite2Texture(string spriteRelativePath,string textureRelativePath)
-        {
-            string spritePath = PathUtil.GetSpritePath(spriteRelativePath);
-            string texturePath = PathUtil.GetTexturePath(textureRelativePath);
-            
-            var sT = AssetDatabase.LoadAssetAtPath<Texture2D>(spritePath);
-            Assert.IsNotNull(sT);
-            Assert.IsNull(AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath));
-            
-            var new2D = new Texture2D(sT.width, sT.height);
-            IXImage xImage = new XImage(new2D);
-            for (int i = 0; i < sT.width; i++)
-            {
-                for (int j = 0; j < sT.height; j++)
-                {
-                    xImage.SetPixel(i, j, sT.GetPixel(i, j));
-                }
-            }
-            SaveXImage(xImage, texturePath);
-        }
-        
-        public static XImage GetXImage(string relativePath,bool autoCreate = false)
+
+        public static XImage GetXImage(int width,int height,string relativePath)
         {
             var texture2D = AssetDatabase.LoadAssetAtPath<Texture2D>(relativePath);
-            if (texture2D == null)
+            if (texture2D == null || texture2D.width != width || texture2D.height != height)
             {
-                if (autoCreate)
-                {
-                    texture2D = new Texture2D(X,Y);
-                    return new XImage(texture2D);
-                }
-                return null;
+                texture2D = new Texture2D(width, height);
+                AssetDatabase.CreateAsset(texture2D, relativePath);
             }
             return new XImage(texture2D);
         }
@@ -63,23 +43,13 @@ namespace Render.Utility
         public static void SaveXImage(IXImage img)
         {
             var xImage = (XImage) img;
-            if(string.IsNullOrEmpty(AssetDatabase.GetAssetPath(xImage.Texture)))
-                return;
+            Assert.IsNotNull(AssetDatabase.GetAssetPath(xImage.Texture));
             xImage.Texture.Apply();
+            if(RenderWindow.IsOpen)
+                RenderWindow.Texture2D = xImage.Texture;
             EditorUtility.SetDirty(xImage.Texture);
             AssetDatabase.SaveAssets();
         }
-        
-        public static void SaveXImage(IXImage img,string relativePath)
-        {
-            if(string.IsNullOrEmpty(relativePath))
-                return;
-            
-            var xImage = (XImage) img;
-            AssetDatabase.CreateAsset(xImage.Texture, relativePath);
-            SaveXImage(img);
-        }
-        
     }
 }
 
